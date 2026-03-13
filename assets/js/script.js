@@ -1,4 +1,7 @@
-// Matrix background effect
+/**
+ * Matrix background animation effect logic.
+ * Initializes and manages the canvas-based falling character effect.
+ */
 function initMatrix() {
   const canvas = document.getElementById("matrixCanvas");
   if (!canvas) return;
@@ -44,7 +47,11 @@ function initMatrix() {
   window.addEventListener("resize", resizeCanvas);
 }
 
-// Helper function to load HTML components
+/**
+ * Fetches an HTML component from a URL and replaces a placeholder element.
+ * @param {string} url - The URL of the HTML partial.
+ * @param {string} elementId - The ID of the placeholder element to replace.
+ */
 async function loadComponent(url, elementId) {
   const placeholder = document.getElementById(elementId);
   if (placeholder) {
@@ -54,17 +61,38 @@ async function loadComponent(url, elementId) {
               const text = await response.text();
               placeholder.outerHTML = text; // Replace placeholder with fetched HTML
           } else {
-              placeholder.innerHTML = `<p style="color:var(--error);">Error: Could not load ${elementId}.</p>`;
+              let errorMsg = `Error: Could not load ${elementId}.`;
+              if (window.location.protocol === 'file:') {
+                  errorMsg = `Local Preview Tip: Components like the header/footer require a local server to load. Please use "Live Server" or host the site to see them.`;
+              }
+              placeholder.innerHTML = `<p style="color:var(--error); text-align:center; padding: 10px; border: 1px dashed var(--error); margin: 10px 0;">${errorMsg}</p>`;
               console.error(`Failed to load ${url}: ${response.status}`);
           }
       } catch (error) {
-          placeholder.innerHTML = `<p style="color:var(--error);">Error: Could not fetch ${elementId}.</p>`;
+          let errorMsg = `Error: Could not fetch ${elementId}.`;
+          if (window.location.protocol === 'file:') {
+              errorMsg = `Local Preview Tip: Components like the header/footer require a local server (http://) to load. Browsers block these for security in "file://" mode.`;
+          }
+          placeholder.innerHTML = `<p style="color:var(--error); text-align:center; padding: 10px; border: 1px dashed var(--error); margin: 10px 0;">${errorMsg}</p>`;
           console.error(`Error fetching ${url}:`, error);
       }
   }
 }
 
-// New function to automatically set the ".active" class on the correct nav link
+/**
+ * Updates the copyright year in the footer dynamically.
+ */
+function updateCopyrightYear() {
+    const yearElement = document.getElementById("copyright-year");
+    if (yearElement) {
+        yearElement.textContent = new Date().getFullYear();
+    }
+}
+
+/**
+ * Automatically sets the ".active" class on the navigation link that matches
+ * the current window location.
+ */
 function setActiveNavLink() {
   // Get the name of the current page file (e.g., "about.html")
   let currentPage = window.location.pathname.split("/").pop();
@@ -123,7 +151,34 @@ function showCommonLoader() {
   });
 }
 
-// Terminal Class
+/**
+ * Adjusts navigation links to be relative to the current page depth.
+ * This ensures that a shared header works from both root and subdirectories.
+ */
+function fixNavigationLinks() {
+  const isSubpage = window.location.pathname.includes('/pages/');
+  if (!isSubpage) return; // Links are already correct for root index.html
+
+  const navLinks = document.querySelectorAll('header a, footer a');
+  navLinks.forEach(link => {
+    let href = link.getAttribute('href');
+    if (href && !href.startsWith('http') && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+      // If we are in /pages/, we need to go up one level for any link that doesn't already go up
+      if (href.startsWith('pages/')) {
+        // "pages/about.html" -> "about.html"
+        link.setAttribute('href', href.replace('pages/', ''));
+      } else if (href === 'index.html' || href.startsWith('index.html#')) {
+        // "index.html" -> "../index.html"
+        link.setAttribute('href', '../' + href);
+      }
+    }
+  });
+}
+
+/**
+ * Main application class for handling Terminal interface logic,
+ * command processing, and history.
+ */
 class TerminalPortfolio {
   constructor() {
     this.commandHistory = [];
@@ -466,9 +521,10 @@ build innovative technology solutions.`;
         // If they are, it means we're switching *back* to GUI and need
         // to re-load components and re-init GUI.
         if (document.getElementById("header-placeholder")) {
+           const prefix = window.location.pathname.includes('/pages/') ? '../' : '';
            await Promise.all([
-                loadComponent("_header.html", "header-placeholder"),
-                loadComponent("_footer.html", "footer-placeholder")
+                loadComponent(prefix + "partials/_header.html", "header-placeholder"),
+                loadComponent(prefix + "partials/_footer.html", "footer-placeholder")
            ]);
            setActiveNavLink();
            initGUI();
@@ -588,7 +644,10 @@ build innovative technology solutions.`;
   }
 }
 
-// GUI initialization
+/**
+ * Initializes GUI-specific interactive elements such as the mobile menu,
+ * mode switching, and skill bar animations.
+ */
 function initGUI() {
   // Mobile menu toggle
   const hamburger = document.querySelector(".hamburger");
@@ -648,7 +707,8 @@ function initGUI() {
     } else {
       // We are on a sub-page (skills, about, etc.)
       // Change the button to a simple link that navigates to index.html#terminal
-      switchToTerminalBtn.href = "index.html#terminal";
+      const prefix = window.location.pathname.includes('/pages/') ? '../' : '';
+      switchToTerminalBtn.href = prefix + "index.html#terminal";
       // We DON'T add a click listener, so it just acts as a normal link.
     }
     // ===== END OF FIX =====
@@ -665,8 +725,10 @@ function initGUI() {
     }
   }
 
-  // Typing animation (if it exists on the current page)
-  function initTypingAnimation() {
+/**
+ * Initializes the typewriter effect for the hero section titles.
+ */
+function initTypingAnimation() {
     const textElement = document.getElementById("typed-text");
     if (!textElement) return;
 
@@ -711,7 +773,9 @@ function initGUI() {
     setTimeout(type, 1000);
   }
 
-  // Initialize animations
+  /**
+   * Initializes AOS (Animate on Scroll) and other layout animations.
+   */
   function initAnimations() {
     if (typeof AOS !== "undefined") {
       AOS.init({
@@ -765,8 +829,11 @@ function initGUI() {
   initAnimations();
 }
 
-// Initialize application
-document.addEventListener("DOMContentLoaded", async () => { // Make this async
+/**
+ * Entry point for the application. Initializes the Matrix background,
+ * determines the current view mode, and loads necessary components.
+ */
+document.addEventListener("DOMContentLoaded", async () => {
   // Always initialize Matrix background
   initMatrix(); 
   
@@ -781,17 +848,22 @@ document.addEventListener("DOMContentLoaded", async () => { // Make this async
 
   // This handles loading for all sub-pages (about.html, skills.html, etc.)
   if (guiInterface && guiInterface.style.display === 'block') {
+      const prefix = window.location.pathname.includes('/pages/') ? '../' : '';
       // Load header and footer *before* initializing GUI
       await Promise.all([
-          loadComponent("_header.html", "header-placeholder"),
-          loadComponent("_footer.html", "footer-placeholder")
+          loadComponent(prefix + "partials/_header.html", "header-placeholder"),
+          loadComponent(prefix + "partials/_footer.html", "footer-placeholder")
       ]);
       
       // Now that header/footer are loaded, set the active link
+      fixNavigationLinks();
       setActiveNavLink();
       
       // And *now* initialize all GUI scripts (hamburger, terminal switch, etc.)
       initGUI();
+
+      // Set dynamic year
+      updateCopyrightYear();
 
       // Also initialize the terminal logic in the background
       if (terminalInterface && !window.terminal) {
@@ -820,12 +892,14 @@ document.addEventListener("DOMContentLoaded", async () => { // Make this async
       await showCommonLoader();
       
       // Load header/footer *after* clicking GUI, before showing it
+      const prefix = window.location.pathname.includes('/pages/') ? '../' : '';
       await Promise.all([
-          loadComponent("_header.html", "header-placeholder"),
-          loadComponent("_footer.html", "footer-placeholder")
+          loadComponent(prefix + "partials/_header.html", "header-placeholder"),
+          loadComponent(prefix + "partials/_footer.html", "footer-placeholder")
       ]);
       
       // Set active link (will be index.html)
+      fixNavigationLinks();
       setActiveNavLink();
 
       document.getElementById("guiInterface").style.display = "block";
